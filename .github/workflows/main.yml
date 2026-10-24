@@ -1,0 +1,25 @@
+
+name: Build WK Autoloader
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build SDK environment
+        run: |
+          git clone --depth 1 https://github.com/ps5-payload-dev/sdk.git /tmp/ps5-sdk
+          cd /tmp/ps5-sdk
+          make
+
+      - name: Build project
+        run: |
+          make store SDK=/tmp/ps5-sdk BUILD_TYPE=stable
+          make restore SDK=/tmp/ps5-sdk
