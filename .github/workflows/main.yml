@@ -1,31 +1,67 @@
 
-
-      - name: Install Python dependencies
-        run: |
-          python3 -m pip install --upgrade pip
-          python3 -m pip install Pillow
-
 name: Build WK Autoloader
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Build SDK environment
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install system dependencies
         run: |
-          git clone --depth 1 https://github.com/ps5-payload-dev/sdk.git /tmp/ps5-sdk
+          sudo apt-get update
+          sudo apt-get install -y \
+            git make clang cmake ninja-build \
+            python3-pip python3-dev \
+            libmicrohttpd-dev
+
+      - name: Install Pillow
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install Pillow
+
+      - name: Verify Pillow
+        run: |
+          python -c "from PIL import Image; print('Pillow OK')"
+
+      - name: Install PS5 Payload SDK
+        run: |
+          git clone --depth 1 \
+            https://github.com/ps5-payload-dev/sdk.git \
+            /tmp/ps5-sdk
+
           cd /tmp/ps5-sdk
           make
 
-      - name: Build project
+      - name: Build WK Autoloader
         run: |
           make store SDK=/tmp/ps5-sdk BUILD_TYPE=stable
           make restore SDK=/tmp/ps5-sdk
+
+      - name: Upload build files
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: WK-Autoloader-build
+          path: |
+            build/**
+            frontend/**
+            *.elf
+            *.bin
+          if-no-files-found: warn
